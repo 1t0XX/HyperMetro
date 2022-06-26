@@ -1,0 +1,42 @@
+type: code
+files:
+- name: src/Main.java
+  visible: true
+  text: "import java.util.*;\nimport java.util.stream.Collectors;\nimport java.util.stream.IntStream;\n\
+    \n// Don't touch it, it's already in use!        \ninterface GameEngine {\n\n\
+    \    void place(char entity, int x, int y);\n\n    void move(int fromX, int fromY,\
+    \ int toX, int toY);\n\n    void undo();\n\n    void save();\n\n    void load();\n\
+    \n    void reDraw();\n}\n\n// this class is finished for now, no changes to board\
+    \ logic please\nclass Board {\n    private static final char EMPTY = ' ';\n  \
+    \  private char[][] squares;\n\n    Board(int width, int height) {\n        squares\
+    \ = new char[height][width];\n        Arrays.stream(squares).forEach(row -> Arrays.fill(row,\
+    \ EMPTY));\n    }\n\n    public void place(char gamePiece, int col, int row) {\n\
+    \        squares[row - 1][col - 1] = gamePiece;\n    }\n\n    public void move(int\
+    \ fromCol, int fromRow, int toCol, int toRow) {\n        char gamePiece = squares[fromRow\
+    \ - 1][fromCol - 1];\n        squares[fromRow - 1][fromCol - 1] = EMPTY;\n   \
+    \     squares[toRow - 1][toCol - 1] = gamePiece;\n    }\n\n    @Override\n   \
+    \ public String toString() {\n        return IntStream\n                .iterate(squares.length\
+    \ - 1, i -> i >= 0, i -> i - 1)\n                .mapToObj(i -> squares[i])\n\
+    \                .map(Arrays::toString)\n                .collect(Collectors.joining(System.lineSeparator()));\n\
+    \    }\n\n    public Snapshot getSnapshot() {\n        return new Snapshot(Arrays.stream(squares)\n\
+    \                .map(char[]::clone)\n                .toArray(char[][]::new));\n\
+    \    }\n\n    public void setStateFrom(Snapshot board) {\n        this.squares\
+    \ = board.board;\n    }\n\n    // It's for saving board state. If you're going\
+    \ to change it, \n    // don't forget to update the methods above\n    static\
+    \ class Snapshot {\n        private final char[][] board;\n\n        private Snapshot(char[][]\
+    \ board) {\n            this.board = board.clone();\n        }\n    }\n}\n\n//\
+    \ Finish this class implementation. You can modify it \n// as you need but don't\
+    \ break anything!\nclass BoardGameEngine implements GameEngine {\n    private\
+    \ final Board board;\n\n    BoardGameEngine(int boardWidth, int boardHeight) {\n\
+    \        board = new Board(boardWidth, boardHeight);\n    }\n\n    @Override\n\
+    \    public void place(char gamePiece, int col, int row) {\n        board.place(gamePiece,\
+    \ col, row);\n    }\n\n    @Override\n    public void move(int fromCol, int fromRow,\
+    \ int toCol, int toRow) {\n        board.move(fromCol, fromRow, toCol, toRow);\n\
+    \    }\n\n    @Override\n    public void undo() {\n        // TODO\n    }\n\n\
+    \    @Override\n    public void save() {\n        // TODO\n    }\n\n    @Override\n\
+    \    public void load() {\n        // TODO\n    }\n\n    @Override\n    public\
+    \ void reDraw() {\n        System.out.println(board);\n    }\n}"
+  learner_created: false
+feedback_link: https://hyperskill.org/learn/step/16533#comment
+status: Failed
+record: -1
