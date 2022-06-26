@@ -1,0 +1,2006 @@
+type: edu
+files:
+- name: src/metro/Main.java
+  visible: true
+  text: |
+    package metro;
+
+    public class Main {
+        public static void main(String[] args) {
+            System.out.println("Hello, world!");
+        }
+    }
+  learner_created: false
+- name: test/Tests.java
+  visible: false
+  text: |-
+    import org.hyperskill.hstest.dynamic.DynamicTest;
+    import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testing.TestedProgram;
+
+    public class Tests extends StageTest<String> {
+        // multiple line output
+        @DynamicTest(order = 1)
+        CheckResult multipleLineOutputTest() {
+
+            TestedProgram main = new TestedProgram();
+            main.start("./test/lausanne.json");
+            String output = main.execute("/output \"m1\"").trim();
+
+            String[] stations = new String[]{"Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            stations = new String[]{"Croisettes", "Vennes", "Fourmi", "Sallaz", "CHUV", "Ours",
+                "Riponne M.Bejart", "Bessieres", "Lausanne—Flon", "Lausanne Gare CFF", "Grancy", "Delices", "Jourdils",
+                "Ouchy—Olympique"};
+
+            output = main.execute("/output \"m2\"");
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            return CheckResult.correct();
+        }
+
+        // addition test
+        @DynamicTest(order = 2)
+        CheckResult additionTest() {
+
+            TestedProgram main = new TestedProgram();
+            main.start("./test/lausanne.json");
+
+            // added a station to the end of the line
+            main.execute("/append \"m1\" \"Test station 1\"");
+            String output = main.execute("/output \"m1\"");
+
+            String[] stations = new String[]{"Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon", "Test station 1"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            // added another one
+            main.execute("/append \"m1\" \"Test station 2\"");
+            output = main.execute("/output \"m1\"");
+
+            stations = new String[]{"Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon", "Test station 1", "Test station 2"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            // added one station to the beginning of the line
+            main.execute("/add-head \"m1\" \"Head\"");
+            output = main.execute("/output \"m1\"");
+
+            stations = new String[]{"Head", "Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon", "Test station 1", "Test station 2"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations
+            );
+
+            return CheckResult.correct();
+        }
+
+        // not existing file check
+        @DynamicTest(order = 3)
+        CheckResult nonexistingFileTest() {
+            TestedProgram main = new TestedProgram();
+            String output = main.start("tHiS_fIlE_DoEs_nOt_ExIsT.txt");
+            if (output.trim().length() == 0) {
+                return CheckResult.wrong("The program did not print anything when the file was not exist. ");
+            }
+            if (output.toLowerCase().startsWith("depot") || output.toLowerCase().endsWith("depot")) {
+                return CheckResult.wrong("It looks like the program did not print an error message when the file was not exist.");
+            }
+            return CheckResult.correct();
+        }
+
+        // output with transfers
+        @DynamicTest(order = 4)
+        CheckResult outputLineWithTransfer() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[][] stations = new String[][]{
+                {"Nemocnice Motol", null},
+                {"Petriny", null},
+                {"Nadrazi Veleslavin", null},
+                {"Borislavka", null},
+                {"Dejvicka", null},
+                {"Hradcanska", null},
+                {"Malostranska", null},
+                {"Staromestska", null},
+                {"Mustek", "Linka B"},
+                {"Muzeum", "Linka C"},
+                {"Namesti Miru", null},
+                {"Jiriho z Podebrad", null},
+                {"Flora", null},
+                {"Zelivskeho", null},
+                {"Strasnicka", null},
+                {"Skalka", null},
+                {"Depo Hostivar", null}
+            };
+
+            String output = main.execute("/output \"Linka A\"");
+            checkDepots(output);
+
+            checkOutputLength(output, stations.length + 2);
+            assertWithTransfer(output, stations);
+
+            return CheckResult.correct();
+        }
+
+        // connections test
+        @DynamicTest(order = 5)
+        CheckResult connectLinesTest() {
+
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[][] stations = new String[][]{{"Nemocnice Motol", null}, {"Petriny", "Linka C"},
+                {"Nadrazi Veleslavin", null}, {"Borislavka", null}, {"Dejvicka", null}, {"Hradcanska", null},
+                {"Malostranska", null}, {"Staromestska", null}, {"Mustek", "Linka B"}, {"Muzeum", "Linka C"},
+                {"Namesti Miru", null}, {"Jiriho z Podebrad", null}, {"Flora", null}, {"Zelivskeho", null},
+                {"Strasnicka", null}, {"Skalka", null}, {"Depo Hostivar", null}
+            };
+            main.execute("/connect \"Linka C\" \"I.P.Pavlova\" \"Linka A\" \"Petriny\"");
+
+            String output = main.execute("/output \"Linka A\"");
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertWithTransfer(output, stations);
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 6)
+        CheckResult simpleRouteTest() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[] correctRoute = {"Petriny", "Nadrazi Veleslavin", "Borislavka", "Dejvicka", "Hradcanska", "Malostranska",
+                "Staromestska", "Mustek", "Muzeum", "Namesti Miru", "Jiriho z Podebrad", "Flora"};
+
+            String[] sOutput = main.execute("/route \"Linka A\" \"Petriny\" \"Linka A\" \"Flora\"").toLowerCase().split("\n");
+
+            if (sOutput.length != correctRoute.length) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route.\n" +
+                    "Expected: " + correctRoute.length + " stations." +
+                    "\nYour output: " + sOutput.length + " stations.");
+            }
+
+            for (int i = 0; i < correctRoute.length; i++) {
+                if (i == 0 && !correctRoute[i].equalsIgnoreCase(sOutput[i])) {
+                    return CheckResult.wrong("The first station in the output should be '" + correctRoute[i] + "'.");
+                } else if (i != 0) {
+                    if (!correctRoute[i].equalsIgnoreCase(sOutput[i])) {
+                        return CheckResult.wrong("After '" + correctRoute[i - 1] + "' should be '" + correctRoute[i] + "'.");
+                    }
+                }
+            }
+
+            return CheckResult.correct();
+        }
+
+        // advanced route test
+        @DynamicTest(order = 7)
+        CheckResult advancedRouteTest() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[] route = {"Vysehrad", "I.P.Pavlova", "Muzeum",
+                "Linka A", "Muzeum", "Mustek",
+                "Linka B", "Mustek", "Namesti Republiky"};
+            String[] sOutput = main.execute("/route \"Linka C\" \"Vysehrad\" \"Linka B\" \"Namesti Republiky\"").split("\n");
+
+            if (sOutput.length != 9) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route.");
+            }
+
+            int index = 0;
+            for (String station : sOutput) {
+                if (!station.toLowerCase().trim().contains(route[index].toLowerCase())) {
+                    return CheckResult.wrong("The route is incorrect. Wrong stations were displayed");
+                }
+                index++;
+            }
+
+            return CheckResult.correct();
+        }
+
+        // simple test with time
+        @DynamicTest(order = 8)
+        CheckResult simpleTime() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague_w_time.json");
+
+            String[] route = {"Borislavka", "Dejvicka", "Hradcanska", "Malostranska", "Staromestska", "Mustek", "Muzeum",
+                "Namesti Miru", "Jiriho z Podebrad", "Flora", "44"};
+            String[] sOutput = main.execute("/fastest-route \"Linka A\" \"Borislavka\" \"Linka A\" \"Flora\"").split("\n");
+
+            if (sOutput.length != route.length) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route. Expected 10 stations and the total time!");
+            }
+
+            int index = 0;
+            for (String station : sOutput) {
+                if (!station.toLowerCase().trim().contains(route[index].toLowerCase())) {
+                    return CheckResult.wrong("The route is incorrect. Wrong stations were displayed");
+                }
+                index++;
+            }
+
+            return CheckResult.correct();
+        }
+
+        // advanced test with time
+        @DynamicTest(order = 9)
+        CheckResult advancedTime() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague_w_time.json");
+
+            String[] route = {"Vysehrad", "I.P.Pavlova", "Muzeum", "Hlavni nadrazi", "Florenc",
+                "Linka B", "Florenc", "Namesti Republiky", "29"
+            };
+
+            String[] sOutput = main.execute("/fastest-route \"Linka C\" \"Vysehrad\" \"Linka B\" \"Namesti Republiky\"")
+                .split("\n");
+
+            if (sOutput.length != 9) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route. Expected 8 stations and the total time!");
+            }
+
+            int index = 0;
+            for (String station : sOutput) {
+                if (!station.toLowerCase().trim().contains(route[index].toLowerCase())) {
+                    return CheckResult.wrong("The route is incorrect. Wrong stations were displayed");
+                }
+                index++;
+            }
+
+            return CheckResult.correct();
+        }
+
+        // checks for "depot" at the start and at the end
+        void checkDepots(String output) {
+            output = output.trim().toLowerCase();
+            if (!output.startsWith("depot")) {
+                throw new WrongAnswer("Your output should start with 'depot'.");
+            } else if (!output.endsWith("depot")) {
+                throw new WrongAnswer("Your output should end with 'depot'.");
+            }
+        }
+
+        // checks number of stations in output
+        void checkOutputLength(String output, int correctLength) {
+            int length = output.trim().split("\n").length;
+            if (length != correctLength) {
+                throw new WrongAnswer("You output contains wrong number of lines.\n" +
+                    "Expected: " + correctLength + " lines\n" +
+                    "Your output: " + length + " lines");
+            }
+        }
+
+        // checks stations
+        void assertStations(String output, String[] stations) {
+
+            String[] sOutput = output.trim().split("\n");
+
+            for (int i = 0; i < stations.length; i++) {
+                if (!sOutput[i + 1].equals(stations[i])) {
+                    throw new WrongAnswer("Can't find station '" + stations[i] + "' in the line number " + (i + 2));
+                }
+            }
+        }
+
+        void assertWithTransfer(String output, String[][] stations) {
+
+            String[] sOutput = output.split("\n");
+
+            for (int i = 0; i < stations.length; i++) {
+                String currentLine = sOutput[i + 1].toLowerCase().trim();
+                String currentStation = stations[i][0];
+                String currentTransfer = stations[i][1];
+                if (currentTransfer == null) {
+                    if (!currentLine.equals(currentStation.toLowerCase())) {
+                        throw new WrongAnswer("There is an error in your program's reply. Some stations were not found.");
+                    }
+                } else if (!currentLine.contains(currentStation.toLowerCase()) ||
+                    !currentLine.contains(currentTransfer.toLowerCase())) {
+                    throw new WrongAnswer("Expected transfer to '" + currentTransfer + "' from '" + currentStation + "' station.");
+                }
+            }
+        }
+    }
+  learner_created: false
+- name: test/lausanne.json
+  visible: false
+  text: |-
+    {
+      "m1": {
+        "1": {
+          "name": "Renes—Gare",
+          "transfer": [],
+          "time": 3
+        },
+        "2": {
+          "name": "Epenex",
+          "transfer": [],
+          "time": 2
+        },
+        "3": {
+          "name": "Crochy",
+          "transfer": [],
+          "time": 6
+        },
+        "4": {
+          "name": "Cerisaie",
+          "transfer": [],
+          "time": 5
+        },
+        "5": {
+          "name": "Bassenges",
+          "transfer": [],
+          "time": 4
+        },
+        "6": {
+          "name": "EPFL",
+          "transfer": [],
+          "time": 6
+        },
+        "7": {
+          "name": "UNL—Sorge",
+          "transfer": [],
+          "time": 8
+        },
+        "8": {
+          "name": "Mouline",
+          "transfer": [],
+          "time": 5
+        },
+        "9": {
+          "name": "UNL—Chemberonne",
+          "transfer": [],
+          "time": 4
+        },
+        "10": {
+          "name": "Bourdonnette",
+          "transfer": [],
+          "time": 5
+        },
+        "11": {
+          "name": "Melley",
+          "transfer": [],
+          "time": 7
+        },
+        "12": {
+          "name": "Provence",
+          "transfer": [],
+          "time": 6
+        },
+        "13": {
+          "name": "Montelly",
+          "transfer": [],
+          "time": 5
+        },
+        "14": {
+          "name": "Vigie",
+          "transfer": [],
+          "time": 4
+        },
+        "15": {
+          "name": "Lausanne—Flon",
+          "transfer": [],
+          "time": null
+        }
+      },
+      "m2": {
+        "1": {
+          "name": "Croisettes",
+          "transfer": [],
+          "time": 6
+        },
+        "2": {
+          "name": "Vennes",
+          "transfer": [],
+          "time": 5
+        },
+        "3": {
+          "name": "Fourmi",
+          "transfer": [],
+          "time": 4
+        },
+        "4": {
+          "name": "Sallaz",
+          "transfer": [],
+          "time": 6
+        },
+        "5": {
+          "name": "CHUV",
+          "transfer": [],
+          "time": 5
+        },
+        "6": {
+          "name": "Ours",
+          "transfer": [],
+          "time": 3
+        },
+        "7": {
+          "name": "Riponne M.Bejart",
+          "transfer": [],
+          "time": 4
+        },
+        "8": {
+          "name": "Bessieres",
+          "transfer": [],
+          "time": 6
+        },
+        "9": {
+          "name": "Lausanne—Flon",
+          "transfer": [],
+          "time": 5
+        },
+        "10": {
+          "name": "Lausanne Gare CFF",
+          "transfer": [],
+          "time": 3
+        },
+        "11": {
+          "name": "Grancy",
+          "transfer": [],
+          "time": 4
+        },
+        "12": {
+          "name": "Delices",
+          "transfer": [],
+          "time": 6
+        },
+        "13": {
+          "name": "Jourdils",
+          "transfer": [],
+          "time": 3
+        },
+        "14": {
+          "name": "Ouchy—Olympique",
+          "transfer": [],
+          "time": null
+        }
+      }
+    }
+  learner_created: false
+- name: test/prague_w_time.json
+  visible: false
+  text: |-
+    {
+      "Linka A": {
+        "0": {
+          "name": "Nemocnice Motol",
+          "transfer": [],
+          "time": 5
+        },
+        "1": {
+          "name": "Petriny",
+          "transfer": [],
+          "time": 5
+        },
+        "2": {
+          "name": "Nadrazi Veleslavin",
+          "transfer": [],
+          "time": 3
+        },
+        "3": {
+          "name": "Borislavka",
+          "transfer": [],
+          "time": 3
+        },
+        "4": {
+          "name": "Dejvicka",
+          "transfer": [],
+          "time": 4
+        },
+        "5": {
+          "name": "Hradcanska",
+          "transfer": [],
+          "time": 4
+        },
+        "6": {
+          "name": "Malostranska",
+          "transfer": [],
+          "time": 1
+        },
+        "7": {
+          "name": "Staromestska",
+          "transfer": [],
+          "time": 7
+        },
+        "8": {
+          "name": "Mustek",
+          "transfer": [
+            {
+              "line": "Linka B",
+              "station": "Mustek"
+            }
+          ],
+          "time": 8
+        },
+        "9": {
+          "name": "Muzeum",
+          "transfer": [
+            {
+              "line": "Linka C",
+              "station": "Muzeum"
+            }
+          ],
+          "time": 5
+        },
+        "10": {
+          "name": "Namesti Miru",
+          "transfer": [],
+          "time": 7
+        },
+        "11": {
+          "name": "Jiriho z Podebrad",
+          "transfer": [],
+          "time": 5
+        },
+        "12": {
+          "name": "Flora",
+          "transfer": [],
+          "time": 7
+        },
+        "13": {
+          "name": "Zelivskeho",
+          "transfer": [],
+          "time": 1
+        },
+        "14": {
+          "name": "Strasnicka",
+          "transfer": [],
+          "time": 7
+        },
+        "15": {
+          "name": "Skalka",
+          "transfer": [],
+          "time": 2
+        },
+        "16": {
+          "name": "Depo Hostivar",
+          "transfer": [],
+          "time": null
+        }
+      },
+      "Linka B": {
+        "0": {
+          "name": "Cerny Most",
+          "transfer": [],
+          "time": 3
+        },
+        "1": {
+          "name": "Rajska zahrada",
+          "transfer": [],
+          "time": 5
+        },
+        "2": {
+          "name": "Hloubetin",
+          "transfer": [],
+          "time": 4
+        },
+        "3": {
+          "name": "Kolbenova",
+          "transfer": [],
+          "time": 1
+        },
+        "4": {
+          "name": "Vysocanska",
+          "transfer": [],
+          "time": 6
+        },
+        "5": {
+          "name": "Ceskomoravska",
+          "transfer": [],
+          "time": 5
+        },
+        "6": {
+          "name": "Palmovka",
+          "transfer": [],
+          "time": 7
+        },
+        "7": {
+          "name": "Invalidovna",
+          "transfer": [],
+          "time": 5
+        },
+        "8": {
+          "name": "Krizikova",
+          "transfer": [],
+          "time": 1
+        },
+        "9": {
+          "name": "Florenc",
+          "transfer": [
+            {
+              "line": "Linka C",
+              "station": "Florenc"
+            }
+          ],
+          "time": 5
+        },
+        "10": {
+          "name": "Namesti Republiky",
+          "transfer": [],
+          "time": 3
+        },
+        "11": {
+          "name": "Mustek",
+          "transfer": [
+            {
+              "line": "Linka A",
+              "station": "Mustek"
+            }
+          ],
+          "time": 7
+        },
+        "12": {
+          "name": "Narodni trida",
+          "transfer": [],
+          "time": 3
+        },
+        "13": {
+          "name": "Karlovo namesti",
+          "transfer": [],
+          "time": 4
+        },
+        "14": {
+          "name": "Andel",
+          "transfer": [],
+          "time": 3
+        },
+        "15": {
+          "name": "Smichovske nadrazi",
+          "transfer": [],
+          "time": 3
+        },
+        "16": {
+          "name": "Radlicka",
+          "transfer": [],
+          "time": 4
+        },
+        "17": {
+          "name": "Jinonice",
+          "transfer": [],
+          "time": 7
+        },
+        "18": {
+          "name": "Nove Butovice",
+          "transfer": [],
+          "time": 2
+        },
+        "19": {
+          "name": "Hurka",
+          "transfer": [],
+          "time": 7
+        },
+        "20": {
+          "name": "Luziny",
+          "transfer": [],
+          "time": 5
+        },
+        "21": {
+          "name": "Luka",
+          "transfer": [],
+          "time": 6
+        },
+        "22": {
+          "name": "Stodulky",
+          "transfer": [],
+          "time": 7
+        },
+        "23": {
+          "name": "Zlicin",
+          "transfer": [],
+          "time": null
+        }
+      },
+      "Linka C": {
+        "0": {
+          "name": "Letnany",
+          "transfer": [],
+          "time": 3
+        },
+        "1": {
+          "name": "Prosek",
+          "transfer": [],
+          "time": 7
+        },
+        "2": {
+          "name": "Strizkov",
+          "transfer": [],
+          "time": 5
+        },
+        "3": {
+          "name": "Ladvi",
+          "transfer": [],
+          "time": 4
+        },
+        "4": {
+          "name": "Kobylisy",
+          "transfer": [],
+          "time": 5
+        },
+        "5": {
+          "name": "Nadrazi Holesovice",
+          "transfer": [],
+          "time": 7
+        },
+        "6": {
+          "name": "Vltavska",
+          "transfer": [],
+          "time": 2
+        },
+        "7": {
+          "name": "Florenc",
+          "transfer": [
+            {
+              "line": "Linka B",
+              "station": "Florenc"
+            }
+          ],
+          "time": 7
+        },
+        "8": {
+          "name": "Hlavni nadrazi",
+          "transfer": [],
+          "time": 2
+        },
+        "9": {
+          "name": "Muzeum",
+          "transfer": [
+            {
+              "line": "Linka A",
+              "station": "Muzeum"
+            }
+          ],
+          "time": 5
+        },
+        "10": {
+          "name": "I.P.Pavlova",
+          "transfer": [],
+          "time": 5
+        },
+        "11": {
+          "name": "Vysehrad",
+          "transfer": [],
+          "time": 4
+        },
+        "12": {
+          "name": "Prazskeho povstani",
+          "transfer": [],
+          "time": 7
+        },
+        "13": {
+          "name": "Pankrac",
+          "transfer": [],
+          "time": 5
+        },
+        "14": {
+          "name": "Budejovicka",
+          "transfer": [],
+          "time": 5
+        },
+        "15": {
+          "name": "Kacerov",
+          "transfer": [],
+          "time": 4
+        },
+        "16": {
+          "name": "Roztyly",
+          "transfer": [],
+          "time": 7
+        },
+        "17": {
+          "name": "Chodov",
+          "transfer": [],
+          "time": 6
+        },
+        "18": {
+          "name": "Opatov",
+          "transfer": [],
+          "time": 5
+        },
+        "19": {
+          "name": "Haje",
+          "transfer": [],
+          "time": null
+        }
+      }
+    }
+  learner_created: false
+- name: test/prague.json
+  visible: false
+  text: |-
+    {
+      "Linka A": {
+        "1": {
+          "name": "Nemocnice Motol" ,
+          "transfer": []
+        } ,
+        "2": {
+          "name": "Petriny" ,
+          "transfer": []
+        } ,
+        "3": {
+          "name": "Nadrazi Veleslavin" ,
+          "transfer": []
+        } ,
+        "4": {
+          "name": "Borislavka" ,
+          "transfer": []
+        } ,
+        "5": {
+          "name": "Dejvicka" ,
+          "transfer": []
+        } ,
+        "6": {
+          "name": "Hradcanska" ,
+          "transfer": []
+        } ,
+        "7": {
+          "name": "Malostranska" ,
+          "transfer": []
+        } ,
+        "8": {
+          "name": "Staromestska" ,
+          "transfer": []
+        } ,
+        "9": {
+          "name": "Mustek" ,
+          "transfer": [
+            {
+              "line": "Linka B" ,
+              "station": "Mustek"
+            }
+          ]
+        } ,
+        "10": {
+          "name": "Muzeum" ,
+          "transfer": [
+            {
+              "line": "Linka C" ,
+              "station": "Muzeum"
+            }
+          ]
+        } ,
+        "11": {
+          "name": "Namesti Miru" ,
+          "transfer": []
+        } ,
+        "12": {
+          "name": "Jiriho z Podebrad" ,
+          "transfer": []
+        } ,
+        "13": {
+          "name": "Flora" ,
+          "transfer": []
+        } ,
+        "14": {
+          "name": "Zelivskeho" ,
+          "transfer": []
+        } ,
+        "15": {
+          "name": "Strasnicka" ,
+          "transfer": []
+        } ,
+        "16": {
+          "name": "Skalka" ,
+          "transfer": []
+        } ,
+        "17": {
+          "name": "Depo Hostivar" ,
+          "transfer": []
+        }
+      } ,
+      "Linka B": {
+        "1": {
+          "name": "Cerny Most" ,
+          "transfer": []
+        } ,
+        "2": {
+          "name": "Rajska zahrada" ,
+          "transfer": []
+        } ,
+        "3": {
+          "name": "Hloubetin" ,
+          "transfer": []
+        } ,
+        "4": {
+          "name": "Kolbenova" ,
+          "transfer": []
+        } ,
+        "5": {
+          "name": "Vysocanska" ,
+          "transfer": []
+        } ,
+        "6": {
+          "name": "Ceskomoravska" ,
+          "transfer": []
+        } ,
+        "7": {
+          "name": "Palmovka" ,
+          "transfer": []
+        } ,
+        "8": {
+          "name": "Invalidovna" ,
+          "transfer": []
+        } ,
+        "9": {
+          "name": "Krizikova" ,
+          "transfer": []
+        } ,
+        "10": {
+          "name": "Florenc" ,
+          "transfer": [
+            {
+              "line": "Linka C" ,
+              "station": "Florenc"
+            }
+          ]
+        } ,
+        "11": {
+          "name": "Namesti Republiky" ,
+          "transfer": []
+        } ,
+        "12": {
+          "name": "Mustek" ,
+          "transfer": [
+            {
+              "line": "Linka B" ,
+              "station": "Mustek"
+            }
+          ]
+        } ,
+        "13": {
+          "name": "Narodni trida" ,
+          "transfer": []
+        } ,
+        "14": {
+          "name": "Karlovo namesti" ,
+          "transfer": []
+        } ,
+        "15": {
+          "name": "Andel" ,
+          "transfer": []
+        } ,
+        "16": {
+          "name": "Smichovske nadrazi" ,
+          "transfer": []
+        } ,
+        "17": {
+          "name": "Radlicka" ,
+          "transfer": []
+        } ,
+        "18": {
+          "name": "Jinonice" ,
+          "transfer": []
+        } ,
+        "19": {
+          "name": "Nove Butovice" ,
+          "transfer": []
+        } ,
+        "20": {
+          "name": "Hurka" ,
+          "transfer": []
+        } ,
+        "21": {
+          "name": "Luziny" ,
+          "transfer": []
+        } ,
+        "22": {
+          "name": "Luka" ,
+          "transfer": []
+        } ,
+        "23": {
+          "name": "Stodulky" ,
+          "transfer": []
+        } ,
+        "24": {
+          "name": "Zlicin" ,
+          "transfer": []
+        }
+      } ,
+      "Linka C": {
+        "1": {
+          "name": "Letnany" ,
+          "transfer": []
+        } ,
+        "2": {
+          "name": "Prosek" ,
+          "transfer": []
+        } ,
+        "3": {
+          "name": "Strizkov" ,
+          "transfer": []
+        } ,
+        "4": {
+          "name": "Ladvi" ,
+          "transfer": []
+        } ,
+        "5": {
+          "name": "Kobylisy" ,
+          "transfer": []
+        } ,
+        "6": {
+          "name": "Nadrazi Holesovice" ,
+          "transfer": []
+        } ,
+        "7": {
+          "name": "Vltavska" ,
+          "transfer": []
+        } ,
+        "8": {
+          "name": "Florenc" ,
+          "transfer": [
+            {
+              "line": "Linka B" ,
+              "station": "Florenc"
+            }
+          ]
+        } ,
+        "9": {
+          "name": "Hlavni nadrazi" ,
+          "transfer": []
+        } ,
+        "10": {
+          "name": "Muzeum" ,
+          "transfer": [
+            {
+              "line": "Linka A" ,
+              "station": "Muzeum"
+            }
+          ]
+        } ,
+        "11": {
+          "name": "I.P.Pavlova" ,
+          "transfer": []
+        } ,
+        "12": {
+          "name": "Vysehrad" ,
+          "transfer": []
+        } ,
+        "13": {
+          "name": "Prazskeho povstani" ,
+          "transfer": []
+        } ,
+        "14": {
+          "name": "Pankrac" ,
+          "transfer": []
+        } ,
+        "15": {
+          "name": "Budejovicka" ,
+          "transfer": []
+        } ,
+        "16": {
+          "name": "Kacerov" ,
+          "transfer": []
+        } ,
+        "17": {
+          "name": "Roztyly" ,
+          "transfer": []
+        } ,
+        "18": {
+          "name": "Chodov" ,
+          "transfer": []
+        } ,
+        "19": {
+          "name": "Opatov" ,
+          "transfer": []
+        } ,
+        "20": {
+          "name": "Haje" ,
+          "transfer": []
+        }
+      }
+    }
+  learner_created: false
+- name: src/metro/database/DoublyLinkedList.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    public class DoublyLinkedList {
+        private int size = 0;
+        private Node head = null;
+        private Node tail = null;
+
+        // Return the size of this linked list
+        public int size() {
+            return size;
+        }
+
+        // Is this linked list empty?
+        public boolean isEmpty() {
+            return size() == 0;
+        }
+
+        // Add a node to the end of the linked list, O(1)
+        public void addLast(Station station) {
+            if (station == null) {
+                throw new IllegalArgumentException("element cannot be null");
+            }
+            if (isEmpty()) {
+                head = tail = new Node(station, null, null);
+            } else {
+                tail.next = new Node(station, tail, null);
+                tail = tail.next;
+            }
+            size++;
+        }
+
+        // Add a node to the beginning of the linked list, O(1)
+        public void addFirst(Station station) {
+            if (station == null) {
+                throw new IllegalArgumentException("element cannot be null");
+            }
+            if (isEmpty()) {
+                head = tail = new Node(station, null, null);
+            } else {
+                head.prev = new Node(station, null, head);
+                head = head.prev;
+            }
+            size++;
+        }
+
+        public boolean addTransfer(String currentStation, String transferStationName, String transferLineName) {
+            Node trav;
+
+            for (trav = head; trav != null; trav = trav.next) {
+                if (currentStation.equals(trav.station.getStationName())) {
+                    Station transferStation = Station.createInstance(transferStationName, transferLineName);
+                    trav.station.addTransfer(new Transfer(transferStation, transferLineName));
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Get a node at a particular index, O(n)
+        public Node get(int index) {
+            if (index < 0 || index >= size) {
+                throw new IllegalArgumentException("Index is not valid.");
+            }
+
+            int i;
+            Node trav;
+
+            // Search from the front or back of the list
+            if (index < size / 2) {
+                for (i = 0, trav = head; i != index; i++) {
+                    trav = trav.next;
+                }
+            } else {
+                for (i = size - 1, trav = tail; i != index; i--) {
+                    trav = trav.prev;
+                }
+            }
+            return trav;
+        }
+
+        // Remove head of the linked list, O(1)
+        public void removeFirst(String lineName) {
+            if (isEmpty()) {
+                throw new RuntimeException("Empty list.");
+            }
+
+            // Extract the name of station at the head and move the head pointer forwards one node
+            String name = head.station.getStationName();
+            head = head.next;
+            size--;
+
+            // If the list now becomes empty, set the tail to null
+            // OR do a memory cleanup of head's previous node
+            if (isEmpty()) {
+                tail = null;
+            } else {
+                head.prev = null;
+            }
+            // delete station from allStations
+            Station.deleteStation(name, lineName);
+        }
+
+        // Remove tail of the linked list, O(1)
+        public void removeLast(String lineName) {
+            if (isEmpty()) {
+                throw new RuntimeException("Empty list.");
+            }
+
+            // Extract the name of station at the tail and move the tail pointer backwards one node
+            String name = tail.station.getStationName();
+            tail = tail.prev;
+            size--;
+
+            // If the list now becomes empty, set the head to null
+            // OR do a memory cleanup of tail's next node
+            if (isEmpty()) {
+                head = null;
+            } else {
+                tail.next = null;
+            }
+            // delete station from allStations
+            Station.deleteStation(name, lineName);
+        }
+
+        // Remove an arbitrary node from the linked list, O(1)
+        private void remove(Node node, String lineName) {
+            // If the node to remove is somewhere either at the head or the tail,
+            // handle those independently
+            if (node.prev == null) {
+                removeFirst(lineName);
+                return;
+            }
+            if (node.next == null) {
+                removeLast(lineName);
+                return;
+            }
+
+            // Make pointers of adjacent nodes skip over 'node'
+            node.next.prev = node.prev;
+            node.prev.next = node.next;
+
+            // Extract the name and do memory cleanup
+            String name = node.station.getStationName();
+            node.station = null;
+            node = node.next = node.prev = null;
+            size--;
+            // delete station from allStations
+            Station.deleteStation(name, lineName);
+        }
+
+        // Remove a particular station in the linked list, O(n)
+        public boolean remove(String stationName, String lineName) {
+            Node trav;
+
+            for (trav = head; trav != null; trav = trav.next) {
+                if (stationName.equals(trav.station.getStationName())) {
+                    remove(trav, lineName);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("depot").append("\n");
+            Node trav = head;
+            while (trav != null) {
+                sb.append(trav);
+                sb.append("\n");
+                trav = trav.next;
+            }
+            sb.append("depot");
+            return sb.toString();
+        }
+    }
+
+    // Node class to represent data
+    class Node {
+        Station station;
+        Node prev, next;
+
+        public Node(Station station, Node prev, Node next) {
+            this.station = station;
+            this.prev = prev;
+            this.next = next;
+        }
+
+        @Override
+        public String toString() {
+            return station.toString();
+        }
+    }
+  learner_created: true
+- name: src/metro/database/Graph.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    import java.util.ArrayList;
+    import java.util.HashMap;
+    import java.util.List;
+    import java.util.Map;
+
+    public class Graph {
+        private final Map<String, DoublyLinkedList> lineStationsMap;
+        private Map<Station, List<Edge>> graph;
+
+        public Graph(Map<String, DoublyLinkedList> lineStationsMap) {
+            this.lineStationsMap = lineStationsMap;
+        }
+
+        private static void formatPath(List<Station> path) {
+            Station prev = null;
+            for (Station station : path) {
+                if (prev != null && !prev.getLineName().equals(station.getLineName())) {
+                    System.out.println("Transition to line " + station.getLineName());
+                }
+
+                System.out.println(station.getStationName());
+                prev = station;
+            }
+        }
+
+        public void findRouteBFS(String fromLineName, Station fromStation, String toLineName, Station toStation) {
+            populateGraph();
+            BreadthFirstSearch solver = new BreadthFirstSearch(graph);
+
+            List<Station> path = solver.reconstructPath(fromLineName, fromStation, toLineName, toStation);
+            formatPath(path);
+        }
+
+        public void populateGraph() {
+            // create empty graph first to avoid NullPointerException
+            graph = new HashMap<>();
+            Map<String, Station> allStations = Station.getAllStations();
+            for (String s : allStations.keySet()) {
+                graph.put(allStations.get(s), new ArrayList<>());
+            }
+
+            for (Map.Entry<String, DoublyLinkedList> entry : lineStationsMap.entrySet()) {
+                String currentLineName = entry.getKey();
+                DoublyLinkedList currentLine = entry.getValue();
+
+                for (int i = 0; i < currentLine.size(); i++) {
+                    Node currentNode = currentLine.get(i);
+                    Station station = currentNode.station;
+
+                    List<Transfer> currentTransferList = station.getTransferList();
+                    if (currentTransferList != null) {
+                        for (Transfer transfer : currentTransferList) {
+                            if (station.getStationName().equals(transfer.getStation().getStationName())) {
+                                // this is the case of transitions between lines as station names are equal
+                                // keep cost of edge 0 to signify that
+                                addZeroWeightedDirectedEdge(currentLineName, station, transfer.getLineName(), transfer.getStation());
+                            } else {
+                                // both stations are different so, consider unweighted edge
+                                addUnweightedDirectedEdge(currentLineName, station, transfer.getLineName(), transfer.getStation());
+                            }
+                        }
+                    }
+
+                    // Using directed edge as the other station will also set an edge in its own for loop
+                    if (currentNode.prev != null) {
+                        addUnweightedDirectedEdge(currentLineName, station, currentLineName, currentNode.prev.station);
+                    }
+                    if (currentNode.next != null) {
+                        addUnweightedDirectedEdge(currentLineName, station, currentLineName, currentNode.next.station);
+                    }
+                }
+            }
+        }
+
+        // Add a directed weighted edge from station u to station v with weight cost
+        private void addDirectedEdge(String l1, Station u, String l2, Station v, int cost) {
+            graph.get(u).add(new Edge(l1, u, l2, v, cost));
+        }
+
+        // Add a directed unweighted edge between stations u and v
+        // The edge added will have a weight of 1 since it's intended to be unweighted
+        private void addUnweightedDirectedEdge(String l1, Station u, String l2, Station v) {
+            addDirectedEdge(l1, u, l2, v, 1);
+        }
+
+        // Add a directed zero-weighted edge between stations u and v
+        // The edge added will have a weight of 0 since it's intended to be a transition between same stations on two lines
+        private void addZeroWeightedDirectedEdge(String l1, Station u, String l2, Station v) {
+            addDirectedEdge(l1, u, l2, v, 0);
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/OutputCommand.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    import metro.database.Subway;
+
+    public class OutputCommand implements Command {
+        private final String lineName;
+        private final Subway subway;
+
+        public OutputCommand(String lineName, Subway subway) {
+            this.lineName = lineName;
+            this.subway = subway;
+        }
+
+        @Override
+        public void execute() {
+            subway.output(lineName);
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/RouteCommand.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    import metro.database.Subway;
+
+    public class RouteCommand implements Command {
+        private final String line1;
+        private final String station1;
+        private final String line2;
+        private final String station2;
+        private final Subway subway;
+
+        public RouteCommand(String line1, String station1, String line2, String station2, Subway subway) {
+            this.line1 = line1;
+            this.station1 = station1;
+            this.line2 = line2;
+            this.station2 = station2;
+            this.subway = subway;
+        }
+
+        @Override
+        public void execute() {
+            subway.route(line1, station1, line2, station2);
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/AddHeadCommand.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    import metro.database.Subway;
+
+    public class AddHeadCommand implements Command {
+        private final String lineName;
+        private final String stationName;
+        private final Subway subway;
+
+        public AddHeadCommand(String lineName, String stationName, Subway subway) {
+            this.lineName = lineName;
+            this.stationName = stationName;
+            this.subway = subway;
+        }
+
+        @Override
+        public void execute() {
+            subway.addHead(lineName, stationName);
+        }
+    }
+  learner_created: true
+- name: src/metro/database/Station.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    import java.util.ArrayList;
+    import java.util.HashMap;
+    import java.util.List;
+    import java.util.Map;
+
+    public class Station {
+        private static final Map<String, Station> allStations = new HashMap<>();
+        private final String stationName;
+        private final String lineName;
+        // for transfer stations
+        private final List<Transfer> transferList;
+
+        public Station(String stationName, String lineName) {
+            this.stationName = stationName;
+            this.lineName = lineName;
+            this.transferList = new ArrayList<>();
+        }
+
+        // key for allStations map will be "stationName^lineName"
+        public static Station createInstance(String stationName, String lineName) {
+            String key = stationName + "^" + lineName;
+            Station station = allStations.get(key);
+
+            if (station == null) {
+                station = new Station(stationName, lineName);
+                allStations.put(key, station);
+            }
+            return station;
+        }
+
+        // key for allStations map will be "stationName^lineName"
+        public static Station checkInstance(String stationName, String lineName) {
+            String key = stationName + "^" + lineName;
+            return allStations.get(key);
+        }
+
+        public static Map<String, Station> getAllStations() {
+            return allStations;
+        }
+
+        public static void deleteStation(String stationName, String lineName) {
+            String key = stationName + "^" + lineName;
+            allStations.remove(key);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(this.stationName);
+            for (Transfer t : transferList) {
+                sb.append(" - ").append(t);
+            }
+            return sb.toString();
+        }
+
+        public String getStationName() {
+            return stationName;
+        }
+
+        public String getLineName() {
+            return lineName;
+        }
+
+        public List<Transfer> getTransferList() {
+            return transferList;
+        }
+
+        public void addTransfer(Transfer transfer) {
+            transferList.add(transfer);
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/AppendCommand.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    import metro.database.Subway;
+
+    public class AppendCommand implements Command {
+        private final String lineName;
+        private final String stationName;
+        private final Subway subway;
+
+        public AppendCommand(String lineName, String stationName, Subway subway) {
+            this.lineName = lineName;
+            this.stationName = stationName;
+            this.subway = subway;
+        }
+
+        @Override
+        public void execute() {
+            subway.append(lineName, stationName);
+        }
+    }
+  learner_created: true
+- name: src/metro/database/BreadthFirstSearch.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    import java.util.*;
+
+    public class BreadthFirstSearch {
+        private final Map<Station, List<Edge>> graph;
+
+        public BreadthFirstSearch(Map<Station, List<Edge>> graph) {
+            if (graph == null) {
+                throw new IllegalArgumentException("Graph cannot be null");
+            }
+            this.graph = graph;
+        }
+
+        public List<Station> reconstructPath(String fromLineName, Station fromStation, String toLineName, Station toStation) {
+            Map<Station, Station> prev = new HashMap<>();
+            bfs(fromLineName, fromStation, prev);
+            List<Station> path = new ArrayList<>();
+
+            Station at = toStation;
+            path.add(at);
+            while (prev.get(at) != null) {
+                path.add(prev.get(at));
+                at = prev.get(at);
+            }
+
+            Collections.reverse(path);
+            if (path.get(0) == fromStation) {
+                return path;
+            }
+            path.clear();
+            return path;
+        }
+
+        private void bfs(String fromLineName, Station fromStation, Map<Station, Station> prev) {
+            Map<Station, Boolean> visited = new HashMap<>();
+            for (Station s : graph.keySet()) {
+                visited.put(s, false);
+            }
+            Queue<Station> queue = new ArrayDeque<>();
+
+            queue.offer(fromStation);
+            visited.replace(fromStation, true);
+
+            while (!queue.isEmpty()) {
+                Station station = queue.poll();
+                List<Edge> edges = graph.get(station);
+
+                // Loop through all edges
+                for (Edge edge : edges) {
+                    if (!visited.get(edge.getToStation())) {
+                        visited.put(edge.getToStation(), true);
+                        prev.put(edge.getToStation(), station);
+                        queue.offer(edge.getToStation());
+                    }
+                }
+            }
+        }
+    }
+  learner_created: true
+- name: hs_err_pid10420.log
+  visible: true
+  learner_created: true
+- name: src/metro/database/Transfer.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    public class Transfer {
+        private final Station station;
+        private final String lineName;
+
+        public Transfer(Station station, String lineName) {
+            this.station = station;
+            this.lineName = lineName;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s (%s)",
+                    station.getStationName(), lineName);
+        }
+
+        public Station getStation() {
+            return station;
+        }
+
+        public String getLineName() {
+            return lineName;
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/Controller.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    public class Controller {
+        private Command command;
+
+        public void setCommand(Command command) {
+            this.command = command;
+        }
+
+        public void executeCommand() {
+            command.execute();
+        }
+    }
+  learner_created: true
+- name: src/metro/database/Subway.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class Subway {
+        private final String inputFile;
+        private final Map<String, DoublyLinkedList> lineStationsMap;
+
+        public Subway(String inputFile) {
+            this.inputFile = inputFile;
+            this.lineStationsMap = new HashMap<>();
+        }
+
+        public boolean populateMap() {
+            return ReadSubwayData.readFromFile(inputFile, lineStationsMap);
+        }
+
+        public void route(String line1, String station1, String line2, String station2) {
+            Station fromStation = Station.checkInstance(station1, line1);
+            Station toStation = Station.checkInstance(station2, line2);
+            if (fromStation == null || toStation == null) {
+                System.out.println("Invalid command. Wrong station or line names.");
+                return;
+            }
+
+            Graph graph = new Graph(lineStationsMap);
+            graph.findRouteBFS(line1, fromStation, line2, toStation);
+        }
+
+        public void connect(String lineName1, String stationName1, String lineName2, String stationName2) {
+            // at this stage, it is not clear if stationName1 exists in lineName1 (similarly for lineName2 and stationName2)
+            // so, we need to call addTransfers() method of line object and NOT the addTransfer() method of station object
+            DoublyLinkedList line1 = lineStationsMap.get(lineName1);
+            DoublyLinkedList line2 = lineStationsMap.get(lineName2);
+            if (line1 != null && line2 != null) {
+                boolean flag1 = line1.addTransfer(stationName1, stationName2, lineName2);
+                boolean flag2 = line2.addTransfer(stationName2, stationName1, lineName1);
+                if (!flag1 || !flag2) {
+                    System.out.println("Invalid command. Wrong station names.");
+                }
+            } else {
+                System.out.println("Invalid command. Wrong line name");
+            }
+        }
+
+        public void append(String lineName, String stationName) {
+            DoublyLinkedList line = lineStationsMap.get(lineName);
+            if (line != null) {
+                line.addLast(Station.createInstance(stationName, lineName));
+            } else {
+                System.out.println("Invalid command. Wrong line name.");
+            }
+        }
+
+        public void addHead(String lineName, String stationName) {
+            DoublyLinkedList line = lineStationsMap.get(lineName);
+            if (line != null) {
+                line.addFirst(Station.createInstance(stationName, lineName));
+            } else {
+                System.out.println("Invalid command. Wrong line name.");
+            }
+        }
+
+        public void remove(String lineName, String stationName) {
+            DoublyLinkedList line = lineStationsMap.get(lineName);
+            if (line != null) {
+                boolean removed = line.remove(stationName, lineName);
+                if (!removed) {
+                    System.out.println("Invalid command. Wrong station name.");
+                }
+            } else {
+                System.out.println("Invalid command. Wrong line name.");
+            }
+        }
+
+        public void output(String lineName) {
+            DoublyLinkedList line = lineStationsMap.get(lineName);
+            if (line != null) {
+                System.out.println(line);
+            } else {
+                System.out.println("Invalid command. Wrong line name.");
+            }
+        }
+    }
+  learner_created: true
+- name: src/metro/database/Edge.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    public class Edge {
+        private final String fromLine;
+        private final Station fromStation;
+        private final String toLine;
+        private final Station toStation;
+        private final int cost;
+
+        public Edge(String fromLine, Station fromStation, String toLine, Station toStation, int cost) {
+            this.fromLine = fromLine;
+            this.fromStation = fromStation;
+            this.toLine = toLine;
+            this.toStation = toStation;
+            this.cost = cost;
+        }
+
+        public Station getToStation() {
+            return toStation;
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/Command.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    public interface Command {
+        void execute();
+    }
+  learner_created: true
+- name: src/metro/commands/RemoveCommand.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    import metro.database.Subway;
+
+    public class RemoveCommand implements Command {
+        private final String lineName;
+        private final String stationName;
+        private final Subway subway;
+
+        public RemoveCommand(String lineName, String stationName, Subway subway) {
+            this.lineName = lineName;
+            this.stationName = stationName;
+            this.subway = subway;
+        }
+
+        @Override
+        public void execute() {
+            subway.remove(lineName, stationName);
+        }
+    }
+  learner_created: true
+- name: src/metro/database/ReadSubwayData.java
+  visible: true
+  text: |-
+    package metro.database;
+
+    import com.google.gson.JsonArray;
+    import com.google.gson.JsonElement;
+    import com.google.gson.JsonObject;
+    import com.google.gson.JsonParser;
+
+    import java.io.File;
+    import java.io.IOException;
+    import java.io.Reader;
+    import java.nio.file.Files;
+    import java.nio.file.Path;
+    import java.util.Map;
+    import java.util.Set;
+
+    public class ReadSubwayData {
+        public static boolean readFromFile(String inputFile, Map<String, DoublyLinkedList> lineStationsMap) {
+            if (!isFileFormatCorrect(inputFile)) {
+                return false;
+            }
+
+            JsonObject jsonObject;
+            try (Reader reader = Files.newBufferedReader(Path.of(inputFile))) {
+                jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
+            } catch (IOException e) {
+                System.out.println("Error! Such a file doesn't exist!");
+                return false;
+            }
+
+            fillMap(jsonObject, lineStationsMap);
+            return true;
+        }
+
+        private static boolean isFileFormatCorrect(String inputFile) {
+            String fileName = new File(inputFile).getName();
+            int dotIndex = fileName.lastIndexOf('.');
+            if (dotIndex == -1) {
+                System.out.println("Error! Incorrect file!");
+                return false;
+            } else if (!fileName.substring(dotIndex + 1).equals("json")) {
+                System.out.println("Error! Incorrect file!");
+                return false;
+            }
+            return true;
+        }
+
+        private static void fillMap(JsonObject jsonObject, Map<String, DoublyLinkedList> lineStationsMap) {
+            Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
+
+            // add station name first
+            for (Map.Entry<String, JsonElement> entry : entrySet) {
+                String lineName = entry.getKey();
+                JsonObject lineJsonObject = entry.getValue().getAsJsonObject();
+                DoublyLinkedList line = new DoublyLinkedList();
+                lineStationsMap.put(lineName, line);
+
+                int totalStations = lineJsonObject.keySet().size();
+                for (int i = 1; i <= totalStations; i++) {
+                    JsonObject stationJsonObject = lineJsonObject.get(String.valueOf(i)).getAsJsonObject();
+                    String stationName = stationJsonObject.get("name").getAsString();
+                    Station station = Station.createInstance(stationName, lineName);
+                    line.addLast(station);
+                }
+            }
+
+            // add transfers to station directly, not to line
+            for (Map.Entry<String, JsonElement> entry : entrySet) {
+                String lineName = entry.getKey();
+                JsonObject lineJsonObject = entry.getValue().getAsJsonObject();
+
+                int totalStations = lineJsonObject.keySet().size();
+                for (int i = 1; i <= totalStations; i++) {
+                    JsonObject stationJsonObject = lineJsonObject.get(String.valueOf(i)).getAsJsonObject();
+                    String stationName = stationJsonObject.get("name").getAsString();
+                    Station station = Station.createInstance(stationName, lineName);
+
+                    JsonArray transferJsonArray = stationJsonObject.get("transfer").getAsJsonArray();
+                    if (!transferJsonArray.isEmpty()) {
+                        for (int j = 0; j < transferJsonArray.size(); j++) {
+                            JsonObject transfer = transferJsonArray.get(j).getAsJsonObject();
+                            // at this stage, these line2 and station2 strings are always non-null and station2 exists in line2
+                            // so, we can directly use addTransfer() method of station object
+                            Station transferStation = Station.createInstance(transfer.get("station").getAsString(), transfer.get("line").getAsString());
+                            station.addTransfer(new Transfer(transferStation, transfer.get("line").getAsString()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+  learner_created: true
+- name: src/metro/commands/ConnectCommand.java
+  visible: true
+  text: |-
+    package metro.commands;
+
+    import metro.database.Subway;
+
+    public class ConnectCommand implements Command {
+        private final String line1;
+        private final String station1;
+        private final String line2;
+        private final String station2;
+        private final Subway subway;
+
+        public ConnectCommand(String line1, String station1, String line2, String station2, Subway subway) {
+            this.line1 = line1;
+            this.station1 = station1;
+            this.line2 = line2;
+            this.station2 = station2;
+            this.subway = subway;
+        }
+
+        @Override
+        public void execute() {
+            subway.connect(line1, station1, line2, station2);
+        }
+    }
+  learner_created: true
+- name: src/metro/model/UpwardsNode.java
+  visible: true
+  learner_created: true
+- name: src/metro/model/UpwardsTravelTimeNode.java
+  visible: true
+  learner_created: true
+- name: src/metro/model/DijkstraSearch.java
+  visible: true
+  learner_created: true
+- name: src/metro/model/BreadthFirstSearch.java
+  visible: true
+  learner_created: true
+- name: src/metro/Station.java
+  visible: true
+  learner_created: true
+- name: src/metro/Line.java
+  visible: true
+  learner_created: true
+- name: src/metro/Util.java
+  visible: true
+  learner_created: true
+- name: src/metro/Metro.java
+  visible: true
+  learner_created: true
+- name: src/metro/CLI.java
+  visible: true
+  learner_created: true
+- name: src/metro/Command.java
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/projects/120/stages/652/implement#comment
+status: Solved
+feedback:
+  message: Congratulations!
+  time: Sun, 26 Jun 2022 15:25:44 UTC
+record: 5

@@ -1,0 +1,20 @@
+# Project exclude paths
+/.gradle/
+/HyperMetro/task/build/
+/HyperMetro/task/out/production/classes/
+/Topics/Dealing with modifiers/List private fields/out/
+/Topics/Dealing with modifiers/List private fields/out/production/classes/
+/Topics/Dealing with modifiers/List public fields/out/
+/Topics/Dealing with modifiers/List public fields/out/production/classes/
+/Topics/Dealing with modifiers/Theory/out/
+/Topics/Dealing with modifiers/Theory/out/production/classes/
+/Topics/Input streams/Reverse input text/out/
+/Topics/Input streams/Reverse input text/out/production/classes/
+/Topics/Streams of primitives/The average salary/out/
+/Topics/Streams of primitives/The average salary/out/production/classes/
+/Topics/The Set interface/Creating a set/out/
+/Topics/The Set interface/Creating a set/out/production/classes/
+/Topics/The Set interface/Removing elements/out/
+/Topics/The Set interface/Removing elements/out/production/classes/
+/Topics/The Set interface/Strict superset/out/
+/Topics/The Set interface/Strict superset/out/production/classes/
